@@ -1,4 +1,3 @@
-//test
 package main
 
 import (
@@ -60,6 +59,7 @@ type Exporter struct {
 	requestsProcessed *prometheus.Desc
 	procStartTime     *prometheus.Desc
 	procMemory        *prometheus.Desc
+	procCpu           *prometheus.Desc
 }
 
 func NewExporter(cmd string, timeout time.Duration) *Exporter {
@@ -120,19 +120,25 @@ func NewExporter(cmd string, timeout time.Duration) *Exporter {
 		requestsProcessed: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "requests_processed_total"),
 			"Number of processes served by a process.",
-			[]string{"name", "id"},
+			[]string{"name", "id", "pid"},
 			nil,
 		),
 		procStartTime: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "proc_start_time_seconds"),
 			"Number of seconds since processor started.",
-			[]string{"name", "id", "codeRevision"},
+			[]string{"name", "id", "codeRevision", "pid"},
 			nil,
 		),
 		procMemory: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "proc_memory"),
 			"Memory consumed by a process",
-			[]string{"name", "id"},
+			[]string{"name", "id", "pid"},
+			nil,
+		),
+		procCpu: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "proc_cpu"),
+			"CPU usage by a process",
+			[]string{"name", "id", "pid"},
 			nil,
 		),
 	}
@@ -164,12 +170,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		processIdentifiers = updateProcesses(processIdentifiers, sg.Group.Processes)
 		for _, proc := range sg.Group.Processes {
 			if bucketID, ok := processIdentifiers[proc.PID]; ok {
-				ch <- prometheus.MustNewConstMetric(e.procMemory, prometheus.GaugeValue, parseFloat(proc.RealMemory), sg.Name, strconv.Itoa(bucketID))
-				ch <- prometheus.MustNewConstMetric(e.requestsProcessed, prometheus.CounterValue, parseFloat(proc.RequestsProcessed), sg.Name, strconv.Itoa(bucketID))
+				ch <- prometheus.MustNewConstMetric(e.procMemory, prometheus.GaugeValue, parseFloat(proc.RealMemory), sg.Name, strconv.Itoa(bucketID), proc.PID)
+				ch <- prometheus.MustNewConstMetric(e.requestsProcessed, prometheus.CounterValue, parseFloat(proc.RequestsProcessed), sg.Name, strconv.Itoa(bucketID), proc.PID)
+				ch <- prometheus.MustNewConstMetric(e.procCpu, prometheus.GaugeValue, parseFloat(proc.CPU), sg.Name, strconv.Itoa(bucketID), proc.PID)
 
 				if startTime, err := strconv.Atoi(proc.SpawnStartTime); err == nil {
 					ch <- prometheus.MustNewConstMetric(e.procStartTime, prometheus.GaugeValue, float64(startTime/nanosecondsPerSecond),
-						sg.Name, strconv.Itoa(bucketID), proc.CodeRevision,
+						sg.Name, strconv.Itoa(bucketID), proc.CodeRevision, proc.PID
 					)
 				}
 			}
