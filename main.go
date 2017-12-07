@@ -237,12 +237,14 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.toplevelQueue
 	ch <- e.maxProcessCount
 	ch <- e.currentProcessCount
-	ch <- e.appCount
+	//ch <- e.appCount
 	ch <- e.appQueue
 	ch <- e.appProcsSpawning
 	ch <- e.requestsProcessed
 	ch <- e.procStartTime
+	ch <- e.procLastUsed
 	ch <- e.procMemory
+	ch <- e.procCpu
 }
 
 func parseOutput(r io.Reader) (*Info, error) {
