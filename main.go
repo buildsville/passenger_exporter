@@ -50,7 +50,7 @@ type Exporter struct {
 	toplevelQueue       *prometheus.Desc
 	maxProcessCount     *prometheus.Desc
 	currentProcessCount *prometheus.Desc
-	appCount            *prometheus.Desc
+	//appCount            *prometheus.Desc
 
 	// App metrics.
 	appQueue         *prometheus.Desc
@@ -101,12 +101,12 @@ func NewExporter(cmd string, timeout time.Duration) *Exporter {
 			[]string{"instance_id"},
 			nil,
 		),
-		appCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "app_count"),
-			"Number of apps.",
-			[]string{"instance_id"},
-			nil,
-		),
+		//appCount: prometheus.NewDesc(
+		//	prometheus.BuildFQName(namespace, "", "app_count"),
+		//	"Number of apps.",
+		//	[]string{"instance_id"},
+		//	nil,
+		//),
 		appQueue: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "app_queue"),
 			"Number of requests in app process queues.",
@@ -172,7 +172,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(e.toplevelQueue, prometheus.GaugeValue, parseFloat(info.TopLevelRequestsInQueue), instanceId)
 	ch <- prometheus.MustNewConstMetric(e.maxProcessCount, prometheus.GaugeValue, parseFloat(info.MaxProcessCount), instanceId)
 	ch <- prometheus.MustNewConstMetric(e.currentProcessCount, prometheus.GaugeValue, parseFloat(info.CurrentProcessCount), instanceId)
-	ch <- prometheus.MustNewConstMetric(e.appCount, prometheus.GaugeValue, parseFloat(info.AppCount), instanceId)
+	//ch <- prometheus.MustNewConstMetric(e.appCount, prometheus.GaugeValue, parseFloat(info.AppCount), instanceId)
 
 	for _, sg := range info.SuperGroups {
 		ch <- prometheus.MustNewConstMetric(e.appQueue, prometheus.GaugeValue, parseFloat(sg.RequestsInQueue), sg.Name, instanceId)
