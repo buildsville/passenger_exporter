@@ -58,6 +58,7 @@ type Exporter struct {
 	// Process metrics.
 	requestsProcessed *prometheus.Desc
 	procStartTime     *prometheus.Desc
+	procLastUsed      *prometheus.Desc
 	procMemory        *prometheus.Desc
 	procCpu           *prometheus.Desc
 }
@@ -129,6 +130,12 @@ func NewExporter(cmd string, timeout time.Duration) *Exporter {
 			[]string{"name", "id", "codeRevision", "pid"},
 			nil,
 		),
+		procLastUsed: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "proc_last_used_seconds"),
+			"Number of seconds since processor started.",
+			[]string{"name", "id", "pid"},
+			nil,
+		),
 		procMemory: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "proc_memory"),
 			"Memory consumed by a process",
@@ -177,6 +184,11 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				if startTime, err := strconv.Atoi(proc.SpawnStartTime); err == nil {
 					ch <- prometheus.MustNewConstMetric(e.procStartTime, prometheus.GaugeValue, float64(startTime/nanosecondsPerSecond),
 						sg.Name, strconv.Itoa(bucketID), proc.CodeRevision, proc.PID,
+					)
+				}
+				if lastUsed, err := strconv.Atoi(proc.LastUsed); err == nil {
+					ch <- prometheus.MustNewConstMetric(e.procLastUsed, prometheus.GaugeValue, float64(lastUsed/nanosecondsPerSecond),
+						sg.Name, strconv.Itoa(bucketID), proc.PID,
 					)
 				}
 			}
