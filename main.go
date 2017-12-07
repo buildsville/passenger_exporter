@@ -176,7 +176,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 				if startTime, err := strconv.Atoi(proc.SpawnStartTime); err == nil {
 					ch <- prometheus.MustNewConstMetric(e.procStartTime, prometheus.GaugeValue, float64(startTime/nanosecondsPerSecond),
-						sg.Name, strconv.Itoa(bucketID), proc.CodeRevision, proc.PID
+						sg.Name, strconv.Itoa(bucketID), proc.CodeRevision, proc.PID,
 					)
 				}
 			}
