@@ -26,6 +26,8 @@ const (
 	namespace = "passenger_nginx"
 
 	nanosecondsPerSecond = 1000000000
+
+	microsecondsPerSecond = 1000000
 )
 
 var (
@@ -185,12 +187,12 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				ch <- prometheus.MustNewConstMetric(e.procCpu, prometheus.GaugeValue, parseFloat(proc.CPU), sg.Name, strconv.Itoa(bucketID), proc.PID)
 
 				if startTime, err := strconv.Atoi(proc.SpawnStartTime); err == nil {
-					ch <- prometheus.MustNewConstMetric(e.procStartTime, prometheus.GaugeValue, float64(startTime/nanosecondsPerSecond),
+					ch <- prometheus.MustNewConstMetric(e.procStartTime, prometheus.GaugeValue, float64(startTime/microsecondsPerSecond),
 						sg.Name, strconv.Itoa(bucketID), proc.CodeRevision, proc.PID,
 					)
 				}
 				if lastUsed, err := strconv.Atoi(proc.LastUsed); err == nil {
-					ch <- prometheus.MustNewConstMetric(e.procLastUsed, prometheus.GaugeValue, float64(lastUsed/nanosecondsPerSecond),
+					ch <- prometheus.MustNewConstMetric(e.procLastUsed, prometheus.GaugeValue, float64(lastUsed/microsecondsPerSecond),
 						sg.Name, strconv.Itoa(bucketID), proc.PID,
 					)
 				}
