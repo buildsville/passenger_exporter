@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"os"
 
 	"golang.org/x/net/html/charset"
 
@@ -74,31 +73,31 @@ func NewExporter(cmd string, timeout time.Duration) *Exporter {
 		up: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "up"),
 			"Could passenger status be queried.",
-			[]string{"instance_id"},
+			nil,
 			nil,
 		),
 		version: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "version"),
 			"Version of passenger",
-			[]string{"version", "instance_id"},
+			nil,
 			nil,
 		),
 		toplevelQueue: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "top_level_queue"),
 			"Number of requests in the top-level queue.",
-			[]string{"instance_id"},
+			nil,
 			nil,
 		),
 		maxProcessCount: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "max_processes"),
 			"Configured maximum number of processes.",
-			[]string{"instance_id"},
+			nil,
 			nil,
 		),
 		currentProcessCount: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "current_processes"),
 			"Current number of processes.",
-			[]string{"instance_id"},
+			nil,
 			nil,
 		),
 		//appCount: prometheus.NewDesc(
@@ -110,43 +109,43 @@ func NewExporter(cmd string, timeout time.Duration) *Exporter {
 		appQueue: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "app_queue"),
 			"Number of requests in app process queues.",
-			[]string{"name", "instance_id"},
+			[]string{"name"},
 			nil,
 		),
 		appProcsSpawning: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "app_procs_spawning"),
 			"Number of processes spawning.",
-			[]string{"name", "instance_id"},
+			[]string{"name"},
 			nil,
 		),
 		requestsProcessed: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "requests_processed_total"),
 			"Number of processes served by a process.",
-			[]string{"name", "id", "pid", "instance_id"},
+			[]string{"name", "id", "pid"},
 			nil,
 		),
 		procStartTime: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "proc_start_time_seconds"),
 			"Number of seconds since processor started.",
-			[]string{"name", "id", "codeRevision", "pid", "instance_id"},
+			[]string{"name", "id", "codeRevision", "pid"},
 			nil,
 		),
 		procLastUsed: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "proc_last_used_seconds"),
 			"Number of seconds since processor started.",
-			[]string{"name", "id", "pid", "instance_id"},
+			[]string{"name", "id", "pid"},
 			nil,
 		),
 		procMemory: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "proc_memory"),
 			"Memory consumed by a process",
-			[]string{"name", "id", "pid", "instance_id"},
+			[]string{"name", "id", "pid"},
 			nil,
 		),
 		procCpu: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "proc_cpu"),
 			"CPU usage by a process",
-			[]string{"name", "id", "pid", "instance_id"},
+			[]string{"name", "id", "pid"},
 			nil,
 		),
 	}
@@ -155,45 +154,41 @@ func NewExporter(cmd string, timeout time.Duration) *Exporter {
 // Collect fetches the statistics from the configured passenger frontend, and
 // delivers them as Prometheus metrics. It implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-    instanceId := os.Getenv("EC2_INSTANCE_ID")
-    if instanceId == "" {
-        instanceId = "none"
-    }
 	info, err := e.status()
 	if err != nil {
-		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0, instanceId)
+		ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 0)
 		log.Errorf("failed to collect status from passenger: %s", err)
 		return
 	}
-	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1, instanceId)
+	ch <- prometheus.MustNewConstMetric(e.up, prometheus.GaugeValue, 1)
 
-	ch <- prometheus.MustNewConstMetric(e.version, prometheus.GaugeValue, 1, info.PassengerVersion, instanceId)
+	ch <- prometheus.MustNewConstMetric(e.version, prometheus.GaugeValue, 1, info.PassengerVersion)
 
-	ch <- prometheus.MustNewConstMetric(e.toplevelQueue, prometheus.GaugeValue, parseFloat(info.TopLevelRequestsInQueue), instanceId)
-	ch <- prometheus.MustNewConstMetric(e.maxProcessCount, prometheus.GaugeValue, parseFloat(info.MaxProcessCount), instanceId)
-	ch <- prometheus.MustNewConstMetric(e.currentProcessCount, prometheus.GaugeValue, parseFloat(info.CurrentProcessCount), instanceId)
-	//ch <- prometheus.MustNewConstMetric(e.appCount, prometheus.GaugeValue, parseFloat(info.AppCount), instanceId)
+	ch <- prometheus.MustNewConstMetric(e.toplevelQueue, prometheus.GaugeValue, parseFloat(info.TopLevelRequestsInQueue))
+	ch <- prometheus.MustNewConstMetric(e.maxProcessCount, prometheus.GaugeValue, parseFloat(info.MaxProcessCount))
+	ch <- prometheus.MustNewConstMetric(e.currentProcessCount, prometheus.GaugeValue, parseFloat(info.CurrentProcessCount))
+	//ch <- prometheus.MustNewConstMetric(e.appCount, prometheus.GaugeValue, parseFloat(info.AppCount))
 
 	for _, sg := range info.SuperGroups {
-		ch <- prometheus.MustNewConstMetric(e.appQueue, prometheus.GaugeValue, parseFloat(sg.RequestsInQueue), sg.Name, instanceId)
-		ch <- prometheus.MustNewConstMetric(e.appProcsSpawning, prometheus.GaugeValue, parseFloat(sg.Group.ProcessesSpawning), sg.Name, instanceId)
+		ch <- prometheus.MustNewConstMetric(e.appQueue, prometheus.GaugeValue, parseFloat(sg.RequestsInQueue), sg.Name)
+		ch <- prometheus.MustNewConstMetric(e.appProcsSpawning, prometheus.GaugeValue, parseFloat(sg.Group.ProcessesSpawning), sg.Name)
 
 		// Update process identifiers map.
 		processIdentifiers = updateProcesses(processIdentifiers, sg.Group.Processes)
 		for _, proc := range sg.Group.Processes {
 			if bucketID, ok := processIdentifiers[proc.PID]; ok {
-				ch <- prometheus.MustNewConstMetric(e.procMemory, prometheus.GaugeValue, parseFloat(proc.RealMemory), sg.Name, strconv.Itoa(bucketID), proc.PID, instanceId)
-				ch <- prometheus.MustNewConstMetric(e.requestsProcessed, prometheus.CounterValue, parseFloat(proc.RequestsProcessed), sg.Name, strconv.Itoa(bucketID), proc.PID, instanceId)
-				ch <- prometheus.MustNewConstMetric(e.procCpu, prometheus.GaugeValue, parseFloat(proc.CPU), sg.Name, strconv.Itoa(bucketID), proc.PID, instanceId)
+				ch <- prometheus.MustNewConstMetric(e.procMemory, prometheus.GaugeValue, parseFloat(proc.RealMemory), sg.Name, strconv.Itoa(bucketID), proc.PID)
+				ch <- prometheus.MustNewConstMetric(e.requestsProcessed, prometheus.CounterValue, parseFloat(proc.RequestsProcessed), sg.Name, strconv.Itoa(bucketID), proc.PID)
+				ch <- prometheus.MustNewConstMetric(e.procCpu, prometheus.GaugeValue, parseFloat(proc.CPU), sg.Name, strconv.Itoa(bucketID), proc.PID)
 
 				if startTime, err := strconv.Atoi(proc.SpawnStartTime); err == nil {
 					ch <- prometheus.MustNewConstMetric(e.procStartTime, prometheus.GaugeValue, float64(startTime/nanosecondsPerSecond),
-						sg.Name, strconv.Itoa(bucketID), proc.CodeRevision, proc.PID, instanceId,
+						sg.Name, strconv.Itoa(bucketID), proc.CodeRevision, proc.PID,
 					)
 				}
 				if lastUsed, err := strconv.Atoi(proc.LastUsed); err == nil {
 					ch <- prometheus.MustNewConstMetric(e.procLastUsed, prometheus.GaugeValue, float64(lastUsed/nanosecondsPerSecond),
-						sg.Name, strconv.Itoa(bucketID), proc.PID, instanceId,
+						sg.Name, strconv.Itoa(bucketID), proc.PID,
 					)
 				}
 			}
