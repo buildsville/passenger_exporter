@@ -52,8 +52,10 @@ type Exporter struct {
 	//appCount            *prometheus.Desc
 
 	// App metrics.
-	appQueue         *prometheus.Desc
 	appProcsSpawning *prometheus.Desc
+
+	// Group metrics.
+	appQueue         *prometheus.Desc
 
 	// Process metrics.
 	requestsProcessed *prometheus.Desc
@@ -106,15 +108,15 @@ func NewExporter(cmd string, timeout time.Duration) *Exporter {
 		//	[]string{"instance_id"},
 		//	nil,
 		//),
-		appQueue: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "", "app_queue"),
-			"Number of requests in app process queues.",
-			[]string{"name"},
-			nil,
-		),
 		appProcsSpawning: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "app_procs_spawning"),
 			"Number of processes spawning.",
+			[]string{"name"},
+			nil,
+		),
+		appQueue: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "app_queue"),
+			"Number of requests in app process queues.",
 			[]string{"name"},
 			nil,
 		),
@@ -170,12 +172,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	//ch <- prometheus.MustNewConstMetric(e.appCount, prometheus.GaugeValue, parseFloat(info.AppCount))
 
 	for _, sg := range info.SuperGroups {
-		ch <- prometheus.MustNewConstMetric(e.appQueue, prometheus.GaugeValue, parseFloat(sg.RequestsInQueue), sg.Name)
 		ch <- prometheus.MustNewConstMetric(e.appProcsSpawning, prometheus.GaugeValue, parseFloat(sg.Group.ProcessesSpawning), sg.Name)
 
+		group := sg.Group
+		ch <- prometheus.MustNewConstMetric(e.appQueue, prometheus.GaugeValue, parseFloat(group.GetWaitListSize), sg.Name)
 		// Update process identifiers map.
-		processIdentifiers = updateProcesses(processIdentifiers, sg.Group.Processes)
-		for _, proc := range sg.Group.Processes {
+		processIdentifiers = updateProcesses(processIdentifiers, group.Processes)
+		for _, proc := range group.Processes {
 			if bucketID, ok := processIdentifiers[proc.PID]; ok {
 				ch <- prometheus.MustNewConstMetric(e.procMemory, prometheus.GaugeValue, parseFloat(proc.RealMemory), sg.Name, strconv.Itoa(bucketID), proc.PID)
 				ch <- prometheus.MustNewConstMetric(e.requestsProcessed, prometheus.CounterValue, parseFloat(proc.RequestsProcessed), sg.Name, strconv.Itoa(bucketID), proc.PID)
@@ -233,8 +236,8 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.maxProcessCount
 	ch <- e.currentProcessCount
 	//ch <- e.appCount
-	ch <- e.appQueue
 	ch <- e.appProcsSpawning
+	ch <- e.appQueue
 	ch <- e.requestsProcessed
 	ch <- e.procStartTime
 	ch <- e.procLastUsed
