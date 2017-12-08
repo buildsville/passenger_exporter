@@ -79,7 +79,7 @@ func NewExporter(cmd string, timeout time.Duration) *Exporter {
 		version: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "version"),
 			"Version of passenger",
-			nil,
+			[]string{"version"},
 			nil,
 		),
 		toplevelQueue: prometheus.NewDesc(
