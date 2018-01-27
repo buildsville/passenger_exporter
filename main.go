@@ -179,7 +179,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		group := sg.Group
 		ch <- prometheus.MustNewConstMetric(e.appQueue, prometheus.GaugeValue, parseFloat(group.GetWaitListSize), sg.Name)
 		// Update process identifiers map.
-		processIdentifiers = updateProcesses(processIdentifiers, group.Processes)
+		processIdentifiers = updateProcesses(processIdentifiers, group.Processes ,parseInt(info.MaxProcessCount))
 		for _, proc := range group.Processes {
 			if bucketID, ok := processIdentifiers[proc.PID]; ok {
 				ch <- prometheus.MustNewConstMetric(e.procMemory, prometheus.GaugeValue, parseFloat(proc.RealMemory), sg.Name, strconv.Itoa(bucketID), proc.PID)
@@ -267,6 +267,15 @@ func parseFloat(val string) float64 {
 	return v
 }
 
+func parseInt(val string) int {
+	v, err := strconv.Atoi(val)
+	if err != nil {
+		log.Errorf("failed to int %s: %v", val, err)
+		panic(err)
+	}
+	return v
+}
+
 // updateProcesses updates the global map from process id:exporter id. Process
 // TTLs cause new processes to be created on a user-defined cycle. When a new
 // process replaces an old process, the new process's statistics will be
@@ -278,10 +287,10 @@ func parseFloat(val string) float64 {
 // process/pid appears, it is mapped to either the first empty place
 // within the global map storing process identifiers, or mapped to
 // pid:id pair in the map.
-func updateProcesses(old map[string]int, processes []Process) map[string]int {
+func updateProcesses(old map[string]int, processes []Process ,maxproc int) map[string]int {
 	var (
 		updated = make(map[string]int)
-		found   = make([]string, len(old))
+		found   = make([]string, maxproc)
 		missing []string
 	)
 

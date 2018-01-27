@@ -14,6 +14,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const maxproc = 11
+
 var golden bool
 
 func init() {
@@ -130,7 +132,7 @@ func newUpdateProcessSpec(
 		input:     input,
 		processes: processes,
 	}
-	s.output = updateProcesses(s.input, s.processes)
+	s.output = updateProcesses(s.input, s.processes, maxproc)
 	return s
 }
 
@@ -201,7 +203,7 @@ func TestUpdateProcessIdentifiers(t *testing.T) {
 			}
 		}
 
-		newOutput := updateProcesses(spec.output, spec.processes)
+		newOutput := updateProcesses(spec.output, spec.processes, maxproc)
 		if !reflect.DeepEqual(newOutput, spec.output) {
 			t.Fatalf("case %s: updateProcesses is not idempotent", spec.name)
 		}
