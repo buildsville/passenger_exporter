@@ -14,8 +14,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const maxproc = 11
-
 var golden bool
 
 func init() {
@@ -98,6 +96,9 @@ func TestScrape(t *testing.T) {
 		t.Fatalf("failed to read scrape fixture: %v", err)
 	}
 
+	println(body)
+	println(fixture)
+
 	if !bytes.Contains(body, fixture) {
 		t.Fatalf("fixture data not contained within response body")
 	}
@@ -132,7 +133,7 @@ func newUpdateProcessSpec(
 		input:     input,
 		processes: processes,
 	}
-	s.output = updateProcesses(s.input, s.processes, maxproc)
+	s.output = updateProcesses(s.input, s.processes)
 	return s
 }
 
@@ -203,7 +204,7 @@ func TestUpdateProcessIdentifiers(t *testing.T) {
 			}
 		}
 
-		newOutput := updateProcesses(spec.output, spec.processes, maxproc)
+		newOutput := updateProcesses(spec.output, spec.processes)
 		if !reflect.DeepEqual(newOutput, spec.output) {
 			t.Fatalf("case %s: updateProcesses is not idempotent", spec.name)
 		}

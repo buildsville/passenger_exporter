@@ -179,7 +179,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		group := sg.Group
 		ch <- prometheus.MustNewConstMetric(e.appQueue, prometheus.GaugeValue, parseFloat(group.GetWaitListSize), sg.Name)
 		// Update process identifiers map.
-		processIdentifiers = updateProcesses(processIdentifiers, group.Processes ,parseInt(info.MaxProcessCount))
+		processIdentifiers = updateProcesses(processIdentifiers, group.Processes)
 		for _, proc := range group.Processes {
 			if bucketID, ok := processIdentifiers[proc.PID]; ok {
 				ch <- prometheus.MustNewConstMetric(e.procMemory, prometheus.GaugeValue, parseFloat(proc.RealMemory), sg.Name, strconv.Itoa(bucketID), proc.PID)
@@ -267,13 +267,14 @@ func parseFloat(val string) float64 {
 	return v
 }
 
-func parseInt(val string) int {
-	v, err := strconv.Atoi(val)
-	if err != nil {
-		log.Errorf("failed to int %s: %v", val, err)
-		panic(err)
+func maxValueOfOldMap(proclist map[string]int) int {
+	m := 0
+	for _,v := range proclist {
+		if v > m {
+			m = v
+		}
 	}
-	return v
+	return m
 }
 
 // updateProcesses updates the global map from process id:exporter id. Process
@@ -287,10 +288,10 @@ func parseInt(val string) int {
 // process/pid appears, it is mapped to either the first empty place
 // within the global map storing process identifiers, or mapped to
 // pid:id pair in the map.
-func updateProcesses(old map[string]int, processes []Process ,maxproc int) map[string]int {
+func updateProcesses(old map[string]int, processes []Process) map[string]int {
 	var (
 		updated = make(map[string]int)
-		found   = make([]string, maxproc)
+		found   = make([]string, maxValueOfOldMap(old) + 1)
 		missing []string
 	)
 
