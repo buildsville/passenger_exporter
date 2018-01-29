@@ -296,13 +296,6 @@ func updateProcesses(old map[string]int, processes []Process ,maxproc int) map[s
 
 	for _, p := range processes {
 		if id, ok := old[p.PID]; ok {
-			if id < 0 || len(found) <= id {
-				fmt.Println(old)
-				for _,v := range processes{
-					fmt.Print(v.PID + " , ")
-				}
-				fmt.Println("")
-			}
 			found[id] = p.PID
 			// id also serves as an index.
 			// By putting the pid at a certain index, we can loop
