@@ -96,9 +96,6 @@ func TestScrape(t *testing.T) {
 		t.Fatalf("failed to read scrape fixture: %v", err)
 	}
 
-	println(body)
-	println(fixture)
-
 	if !bytes.Contains(body, fixture) {
 		t.Fatalf("fixture data not contained within response body")
 	}
